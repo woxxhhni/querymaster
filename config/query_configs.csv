@@ -1,0 +1,5 @@
+database,file_path,params,output_file
+ORACLE,queries/oracle/daily_sales.sql,{"dt": "2024-01-01"},output/oracle/daily_sales.csv
+ORACLE,queries/oracle/user_activity.sql,{"dt": "2024-01-01"},output/oracle/user_activity.csv
+cmrods_prd,queries/postgres/product_metrics.sql,{"dt": "2024-01-01"},output/postgres/product_metrics.csv
+cmrods_prd,queries/postgres/customer_stats.sql,{"dt": "2024-01-01"},output/postgres/customer_stats.csv

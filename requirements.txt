@@ -1,0 +1,24 @@
+# Core dependencies
+pandas>=2.0.0
+pyarrow>=14.0.1
+
+# Database connectors
+asyncpg>=0.29.0  # Async PostgreSQL connector
+oracledb>=2.0.0  # Oracle database connector
+
+# Development dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+isort>=5.12.0
+
+# Documentation
+sphinx>=7.0.0
+sphinx-rtd-theme>=1.3.0
+
+# Build and publish tools
+build>=1.0.0
+twine>=4.0.0

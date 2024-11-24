@@ -1,0 +1,35 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+include setup.py
+include setup.cfg
+
+# 示例文件
+recursive-include examples *.py
+recursive-include examples *.ipynb
+recursive-include examples *.md
+
+# 配置文件
+recursive-include querymaster/config *.ini
+recursive-include querymaster/config *.yaml
+recursive-include querymaster/config *.json
+recursive-include examples/config *.ini
+recursive-include examples/config *.yaml
+recursive-include examples/config *.json
+
+# SQL查询文件
+recursive-include querymaster/queries *.sql
+recursive-include examples/queries *.sql
+
+# 文档文件
+recursive-include docs *.rst
+recursive-include docs *.py
+recursive-include docs *.bat
+recursive-include docs Makefile
+
+# 测试文件
+recursive-include tests *.py
+
+# 排除编译文件和缓存
+global-exclude *.py[cod] __pycache__ *.so *.dylib
