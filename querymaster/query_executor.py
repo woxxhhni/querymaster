@@ -104,14 +104,8 @@ class QueryExecutor:
             # Execute queries
             async with oracle_master, postgres_master:
                 oracle_results, postgres_results = await asyncio.gather(
-                    oracle_master.execute_multiple_files(
-                        oracle_configs, 
-                        return_results=return_results
-                    ),
-                    postgres_master.execute_multiple_files(
-                        postgres_configs, 
-                        return_results=return_results
-                    )
+                    oracle_master.execute_multiple_files(oracle_configs),
+                    postgres_master.execute_multiple_files(postgres_configs)
                 )
 
             if return_results:
