@@ -39,7 +39,8 @@ class QueryExecutor:
         self,
         oracle_configs: Optional[List[Dict[str, Any]]] = None,
         postgres_configs: Optional[List[Dict[str, Any]]] = None,
-        return_results: bool = True
+        return_results: bool = True,
+        parameters: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, List[Any]]]:
         """
         Execute queries for both Oracle and PostgreSQL databases
@@ -48,6 +49,7 @@ class QueryExecutor:
             oracle_configs: Optional list of Oracle query configurations
             postgres_configs: Optional list of PostgreSQL query configurations
             return_results: Whether to return query results (default: True)
+            parameters: Optional dictionary of query parameters
 
         Returns:
             Dictionary containing results for both databases if return_results is True,
@@ -57,7 +59,8 @@ class QueryExecutor:
             self._execute_queries_async(
                 oracle_configs, 
                 postgres_configs, 
-                return_results
+                return_results,
+                parameters
             )
         )
 
@@ -65,7 +68,8 @@ class QueryExecutor:
         self,
         oracle_configs: Optional[List[Dict[str, Any]]],
         postgres_configs: Optional[List[Dict[str, Any]]],
-        return_results: bool
+        return_results: bool,
+        parameters: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, List[Any]]]:
         """
         Internal async method to execute queries
@@ -74,6 +78,7 @@ class QueryExecutor:
             oracle_configs: Optional list of Oracle query configurations
             postgres_configs: Optional list of PostgreSQL query configurations
             return_results: Whether to return query results
+            parameters: Optional dictionary of query parameters
 
         Returns:
             Dictionary containing results for both databases if return_results is True,
@@ -86,7 +91,7 @@ class QueryExecutor:
                 oracle_configs = oracle_configs or config_manager.get_database_configs("ORACLE")
                 postgres_configs = postgres_configs or config_manager.get_database_configs("cmrods_prd")
 
-            # Initialize QueryMaster instances with return_results flag
+            # Initialize QueryMaster instances
             oracle_master = QueryMaster(
                 section="ORACLE",
                 config_file=self.config_path,
@@ -104,8 +109,8 @@ class QueryExecutor:
             # Execute queries
             async with oracle_master, postgres_master:
                 oracle_results, postgres_results = await asyncio.gather(
-                    oracle_master.execute_multiple_files(oracle_configs),
-                    postgres_master.execute_multiple_files(postgres_configs)
+                    oracle_master.execute_multiple_files(oracle_configs, parameters=parameters),
+                    postgres_master.execute_multiple_files(postgres_configs, parameters=parameters)
                 )
 
             if return_results:

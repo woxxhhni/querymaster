@@ -320,7 +320,8 @@ class QueryMaster:
 
     async def execute_multiple_files(
         self, 
-        configs: List[Dict[str, Any]]
+        configs: List[Dict[str, Any]],
+        parameters: Optional[Dict[str, Any]] = None
     ) -> List[pd.DataFrame]:
         """
         Execute multiple query files in parallel while ensuring statements within each file
@@ -328,50 +329,40 @@ class QueryMaster:
 
         Args:
             configs: List of configuration dictionaries containing query file information
+            parameters: Optional dictionary of parameters to replace in SQL queries
 
         Returns:
             List of pandas DataFrames containing query results
         """
         tasks = []
         for config in configs:
-            task = self._execute_with_semaphore(config)
+            task = self._execute_with_semaphore(config, parameters)
             tasks.append(task)
         return await asyncio.gather(*tasks)
 
     async def _execute_with_semaphore(
         self, 
-        config: Dict[str, Any]
+        config: Dict[str, Any],
+        parameters: Optional[Dict[str, Any]] = None
     ) -> pd.DataFrame:
-        """
-        Execute a single query file with semaphore control.
-
-        Args:
-            config: Configuration dictionary containing query file information
-
-        Returns:
-            pandas DataFrame containing query results
-        """
         async with self.semaphore:
-            return await self._execute_single_file(config)
+            return await self._execute_single_file(config, parameters)
 
     async def _execute_single_file(
         self, 
-        config: Dict[str, Any]
+        config: Dict[str, Any],
+        parameters: Optional[Dict[str, Any]] = None
     ) -> pd.DataFrame:
-        """
-        Execute statements in a single file sequentially using the same connection.
-
-        Args:
-            config: Configuration dictionary containing query file information
-
-        Returns:
-            pandas DataFrame containing results from the last SELECT query
-        """
         try:
             # Read and parse query file
             query_file = Path(config['query_file'])
             with open(query_file, 'r') as f:
                 query_content = f.read()
+
+            # Replace parameters if provided
+            if parameters:
+                for key, value in parameters.items():
+                    query_content = query_content.replace(f"{{{key}}}", str(value))
 
             # Split into individual statements
             statements = self._split_sql_statements(query_content)

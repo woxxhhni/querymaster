@@ -29,7 +29,7 @@ def main():
         print("\nExecuting all queries...")
         executor.execute_queries(
             return_results=False,
-            params={
+            parameters={
                 "dt_t1_yyyy-mm-dd": t1_date,    # T-1 date (YYYY-MM-DD)
                 "dt_t2_yyyy-mm-dd": t2_date,    # T-2 date (YYYY-MM-DD)
                 "dt_t1_yyyymmdd": t1_date_compact,  # T-1 date (YYYYMMDD)
