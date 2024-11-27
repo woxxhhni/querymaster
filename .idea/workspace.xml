@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a486a7af-47ba-4c20-87ab-cc300f7b815a" name="Changes" comment="" />
+    <list default="true" id="a486a7af-47ba-4c20-87ab-cc300f7b815a" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/querymaster/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/querymaster/core.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -84,7 +86,7 @@
       <updated>1732386581099</updated>
       <workItem from="1732386582180" duration="2295000" />
       <workItem from="1732399482875" duration="7626000" />
-      <workItem from="1732679830391" duration="620000" />
+      <workItem from="1732679830391" duration="1264000" />
     </task>
     <servers />
   </component>

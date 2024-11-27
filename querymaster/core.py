@@ -313,9 +313,23 @@ class QueryMaster:
         Ensures proper cleanup of resources.
         """
         if self.thread_pool:
-            self.thread_pool.shutdown(wait=True)
+            self.thread_pool.shutdown(wait=False)  # Don't wait for thread pool shutdown
+        
         if isinstance(self.db_connector, PostgresConnector) and self.db_connector.pool:
-            await self.db_connector.pool.close()
+            try:
+                # Add timeout for pool closing
+                async with asyncio.timeout(60):  # 60 seconds timeout
+                    # 先关闭所有活跃连接
+                    if hasattr(self.db_connector.pool, '_holders'):
+                        for holder in self.db_connector.pool._holders:
+                            if holder._con and not holder._con.is_closed():
+                                await holder._con.close()
+                    # 然后关闭连接池
+                    await self.db_connector.pool.close()
+            except asyncio.TimeoutError:
+                self.logger.warning("Pool closing timed out after 60 seconds")
+            except Exception as e:
+                self.logger.error(f"Error closing pool: {str(e)}")
 
     async def execute_multiple_files(
         self, 
@@ -337,7 +351,20 @@ class QueryMaster:
         for config in configs:
             task = self._execute_with_semaphore(config, parameters)
             tasks.append(task)
-        return await asyncio.gather(*tasks)
+        
+        # 使用 gather 的 return_exceptions=True 来捕获单个任务的错误
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 处理结果，将错误转换为空DataFrame并记录日志
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                self.logger.error(f"Error executing {configs[i]['query_file']}: {str(result)}")
+                processed_results.append(pd.DataFrame())  # 返回空DataFrame代替错误
+            else:
+                processed_results.append(result)
+        
+        return processed_results
 
     async def _execute_with_semaphore(
         self, 
@@ -425,60 +452,66 @@ class QueryMaster:
     async def _execute_oracle_file_statements(
         self, 
         statements: List[str],
-        config: Dict[str, Any]
+        config: Dict[str, Any],
+        max_retries: int = 3,
+        timeout: int = 3600
     ) -> pd.DataFrame:
-        """
-        Execute multiple statements sequentially for Oracle database.
-
-        Args:
-            statements: List of SQL statements to execute
-            config: Configuration dictionary containing query information
-
-        Returns:
-            pandas DataFrame containing results from the last SELECT query
-        """
+        """Execute multiple statements sequentially for Oracle database."""
         last_result = pd.DataFrame()
         
         def _execute_statements():
-            nonlocal last_result
             with self.db_connector.get_connection() as conn:
                 cursor = conn.cursor()
                 for stmt in statements:
                     if stmt.strip():
                         cursor.execute(stmt)
-                        if cursor.description:  # If it's a SELECT query
+                        if cursor.description:
                             columns = [desc[0] for desc in cursor.description]
                             results = cursor.fetchall()
                             last_result = pd.DataFrame(results, columns=columns)
                 return last_result
 
-        return await asyncio.get_running_loop().run_in_executor(
-            self.thread_pool, _execute_statements
-        )
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                async with asyncio.timeout(timeout):
+                    return await asyncio.get_running_loop().run_in_executor(
+                        self.thread_pool, _execute_statements
+                    )
+            except asyncio.TimeoutError:
+                retry_count += 1
+                if retry_count < max_retries:
+                    self.logger.warning(f"Execution timed out, retrying ({retry_count}/{max_retries})...")
+                else:
+                    raise
 
     async def _execute_postgres_file_statements(
         self, 
         statements: List[str],
-        config: Dict[str, Any]
+        config: Dict[str, Any],
+        max_retries: int = 3,
+        timeout: int = 3600
     ) -> pd.DataFrame:
-        """
-        Execute multiple statements sequentially for PostgreSQL database.
-
-        Args:
-            statements: List of SQL statements to execute
-            config: Configuration dictionary containing query information
-
-        Returns:
-            pandas DataFrame containing results from the last SELECT query
-        """
+        """Execute multiple statements sequentially for PostgreSQL database."""
         last_result = pd.DataFrame()
         
         async with self.db_connector.get_connection() as conn:
             for stmt in statements:
                 if stmt.strip():
-                    result = await conn.fetch(stmt)
-                    if result:  # If it's a SELECT query
-                        last_result = pd.DataFrame([dict(row) for row in result])
+                    retry_count = 0
+                    while retry_count < max_retries:
+                        try:
+                            async with asyncio.timeout(timeout):
+                                result = await conn.fetch(stmt)
+                                if result:
+                                    last_result = pd.DataFrame([dict(row) for row in result])
+                                break
+                        except asyncio.TimeoutError:
+                            retry_count += 1
+                            if retry_count < max_retries:
+                                self.logger.warning(f"Statement timed out, retrying ({retry_count}/{max_retries})...")
+                            else:
+                                raise
         
         return last_result
 
