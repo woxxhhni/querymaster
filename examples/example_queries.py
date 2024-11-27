@@ -1,55 +1,33 @@
-from querymaster.config_manager import QueryConfigManager
-from querymaster.core import QueryMaster
+from querymaster.query_executor import QueryExecutor
 from pathlib import Path
-import asyncio
 
-async def main():
+def main():
     try:
+        # Get configuration file paths
         config_path = Path(__file__).parent.parent / "connection.ini"
         query_config_path = Path(__file__).parent.parent / "configs/query_configs.csv"
         
-        # Initialize configuration manager with specific config file location
-        config_manager = QueryConfigManager(config_file=query_config_path)
-        
-        # Initialize QueryMaster instances
-        oracle_master = QueryMaster(
-            section="ORACLE",
-            config_file=config_path,
-            log_file="logs/oracle_queries.log",
-            max_concurrent_queries=3
-        )
-        
-        postgres_master = QueryMaster(
-            section="cmrods_prd",
-            config_file=config_path,
-            log_file="logs/postgres_queries.log",
-            max_concurrent_queries=5
+        # Initialize QueryExecutor
+        executor = QueryExecutor(
+            connection_config=str(config_path),
+            query_config=str(query_config_path),
+            oracle_max_queries=3,
+            postgres_max_queries=5
         )
 
-        # Get configurations
-        oracle_configs = config_manager.get_database_configs("ORACLE")
-        postgres_configs = config_manager.get_database_configs("cmrods_prd")
-
-        # Execute queries in parallel
+        # Execute queries without returning results
         print("\nExecuting all queries...")
-        async with oracle_master, postgres_master:
-            await asyncio.gather(
-                oracle_master.execute_multiple_files(oracle_configs),
-                postgres_master.execute_multiple_files(postgres_configs)
-            )
-        
+        executor.execute_queries(return_results=False)
         print("\nAll queries completed successfully!")
+
+        # Or execute queries with results if needed
+        # results = executor.execute_queries(return_results=True)
+        # oracle_results = results["oracle"]
+        # postgres_results = results["postgres"]
 
     except Exception as e:
         print(f"\nError occurred: {str(e)}")
         raise
 
 if __name__ == "__main__":
-    # Create necessary directories
-    Path("output/oracle").mkdir(parents=True, exist_ok=True)
-    Path("output/postgres").mkdir(parents=True, exist_ok=True)
-    Path("logs").mkdir(exist_ok=True)
-    Path("configs").mkdir(exist_ok=True)
-    
-    # Run async main function
-    asyncio.run(main())
+    main()

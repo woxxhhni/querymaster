@@ -317,3 +317,179 @@ class QueryMaster:
             self.thread_pool.shutdown(wait=True)
         if isinstance(self.db_connector, PostgresConnector) and self.db_connector.pool:
             await self.db_connector.pool.close()
+
+    async def execute_multiple_files(
+        self, 
+        configs: List[Dict[str, Any]]
+    ) -> List[pd.DataFrame]:
+        """
+        Execute multiple query files in parallel while ensuring statements within each file
+        are executed sequentially.
+
+        Args:
+            configs: List of configuration dictionaries containing query file information
+
+        Returns:
+            List of pandas DataFrames containing query results
+        """
+        tasks = []
+        for config in configs:
+            task = self._execute_with_semaphore(config)
+            tasks.append(task)
+        return await asyncio.gather(*tasks)
+
+    async def _execute_with_semaphore(
+        self, 
+        config: Dict[str, Any]
+    ) -> pd.DataFrame:
+        """
+        Execute a single query file with semaphore control.
+
+        Args:
+            config: Configuration dictionary containing query file information
+
+        Returns:
+            pandas DataFrame containing query results
+        """
+        async with self.semaphore:
+            return await self._execute_single_file(config)
+
+    async def _execute_single_file(
+        self, 
+        config: Dict[str, Any]
+    ) -> pd.DataFrame:
+        """
+        Execute statements in a single file sequentially using the same connection.
+
+        Args:
+            config: Configuration dictionary containing query file information
+
+        Returns:
+            pandas DataFrame containing results from the last SELECT query
+        """
+        try:
+            # Read and parse query file
+            query_file = Path(config['query_file'])
+            with open(query_file, 'r') as f:
+                query_content = f.read()
+
+            # Split into individual statements
+            statements = self._split_sql_statements(query_content)
+            
+            # Execute statements sequentially using the same connection
+            if isinstance(self.db_connector, OracleConnector):
+                return await self._execute_oracle_file_statements(statements, config)
+            else:
+                return await self._execute_postgres_file_statements(statements, config)
+
+        except Exception as e:
+            self.logger.error(f"Error executing {config['query_file']}: {str(e)}")
+            raise
+
+    async def _execute_oracle_file_statements(
+        self, 
+        statements: List[str],
+        config: Dict[str, Any]
+    ) -> pd.DataFrame:
+        """
+        Execute multiple statements sequentially for Oracle database.
+
+        Args:
+            statements: List of SQL statements to execute
+            config: Configuration dictionary containing query information
+
+        Returns:
+            pandas DataFrame containing results from the last SELECT query
+        """
+        last_result = pd.DataFrame()
+        
+        def _execute_statements():
+            nonlocal last_result
+            with self.db_connector.get_connection() as conn:
+                cursor = conn.cursor()
+                for stmt in statements:
+                    if stmt.strip():
+                        cursor.execute(stmt)
+                        if cursor.description:  # If it's a SELECT query
+                            columns = [desc[0] for desc in cursor.description]
+                            results = cursor.fetchall()
+                            last_result = pd.DataFrame(results, columns=columns)
+                return last_result
+
+        return await asyncio.get_running_loop().run_in_executor(
+            self.thread_pool, _execute_statements
+        )
+
+    async def _execute_postgres_file_statements(
+        self, 
+        statements: List[str],
+        config: Dict[str, Any]
+    ) -> pd.DataFrame:
+        """
+        Execute multiple statements sequentially for PostgreSQL database.
+
+        Args:
+            statements: List of SQL statements to execute
+            config: Configuration dictionary containing query information
+
+        Returns:
+            pandas DataFrame containing results from the last SELECT query
+        """
+        last_result = pd.DataFrame()
+        
+        async with self.db_connector.get_connection() as conn:
+            for stmt in statements:
+                if stmt.strip():
+                    result = await conn.fetch(stmt)
+                    if result:  # If it's a SELECT query
+                        last_result = pd.DataFrame([dict(row) for row in result])
+        
+        return last_result
+
+    def _split_sql_statements(self, query_content: str) -> List[str]:
+        """
+        Split SQL file content into individual statements.
+
+        Args:
+            query_content: Complete SQL file content
+
+        Returns:
+            List of individual SQL statements
+        """
+        statements = []
+        current_stmt = []
+        in_block = False
+        
+        for line in query_content.splitlines():
+            line = line.strip()
+            
+            # Skip empty lines and comments
+            if not line or line.startswith('--'):
+                continue
+            
+            # Handle BEGIN/END blocks
+            if line.upper().startswith('BEGIN'):
+                in_block = True
+            
+            if in_block:
+                current_stmt.append(line)
+                if line.upper().endswith('END;'):
+                    in_block = False
+                    statements.append('\n'.join(current_stmt))
+                    current_stmt = []
+                continue
+            
+            # Handle normal statements
+            if line.endswith(';'):
+                current_stmt.append(line[:-1])  # Remove semicolon
+                if current_stmt:
+                    statements.append('\n'.join(current_stmt))
+                current_stmt = []
+            else:
+                current_stmt.append(line)
+        
+        # Handle last statement if exists
+        if current_stmt:
+            statements.append('\n'.join(current_stmt))
+            
+        return statements
