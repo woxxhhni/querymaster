@@ -361,17 +361,43 @@ class QueryMaster:
 
             # Replace parameters if provided
             if parameters:
+                # 首先使用配置文件中的参数
+                config_params = config.get('params', {})
+                for key, value in config_params.items():
+                    query_content = query_content.replace(f"{{{key}}}", str(value))
+
+                # 然后使用传入的参数（可以覆盖配置文件中的参数）
                 for key, value in parameters.items():
                     query_content = query_content.replace(f"{{{key}}}", str(value))
+                    # 替换输出文件路径中的参数
+                    if 'output_file' in config:
+                        config['output_file'] = config['output_file'].replace(
+                            f"{{{key}}}", 
+                            str(value)
+                        )
 
             # Split into individual statements
             statements = self._split_sql_statements(query_content)
             
             # Execute statements sequentially using the same connection
+            result_df = None
             if isinstance(self.db_connector, OracleConnector):
-                return await self._execute_oracle_file_statements(statements, config)
+                result_df = await self._execute_oracle_file_statements(statements, config)
             else:
-                return await self._execute_postgres_file_statements(statements, config)
+                result_df = await self._execute_postgres_file_statements(statements, config)
+
+            # Save output if output_file is specified in config
+            if result_df is not None and 'output_file' in config:
+                output_format = config.get('output_format', 'csv')  # Default to CSV
+                output_path = Path(config['output_file'])
+                output_path.parent.mkdir(parents=True, exist_ok=True)  # Create output directory if not exists
+                await self.save_output_chunked(
+                    result_df,
+                    output_path,
+                    output_format
+                )
+
+            return result_df
 
         except Exception as e:
             self.logger.error(f"Error executing {config['query_file']}: {str(e)}")

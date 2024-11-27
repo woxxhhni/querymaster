@@ -9,13 +9,13 @@ class QueryConfigManager:
     Query configuration manager for managing and parsing query configuration files
     """
     
-    def __init__(self, config_file: Union[str, Path] = "configs/query_configs.csv"):
+    def __init__(self, config_file: Union[str, Path] = "config/query_configs.csv"):
         """
         Initialize the query configuration manager
         
         Args:
             config_file: Path to CSV configuration file, can be string or Path object
-                        defaults to configs/query_configs.csv
+                        defaults to config/query_configs.csv
         
         Raises:
             FileNotFoundError: When configuration file does not exist
@@ -44,22 +44,17 @@ class QueryConfigManager:
         
         Args:
             database: Database identifier
-        
+            
         Returns:
             List of dictionaries containing query configurations
         """
         df_filtered = self.df[self.df['database'] == database]
         configs = []
         for _, row in df_filtered.iterrows():
-            try:
-                params = json.loads(row["params"]) if isinstance(row["params"], str) else row["params"]
-            except json.JSONDecodeError:
-                raise ValueError(f"Invalid params JSON format: {row['params']}")
-            
             config = {
-                "file_path": Path(row["file_path"]),
-                "params": params,
-                "output_file": Path(row["output_file"])
+                "query_file": row["file_path"],
+                "output_file": row["output_file"],
+                "params": eval(row["params"]) if pd.notna(row["params"]) else {}
             }
             configs.append(config)
         return configs
