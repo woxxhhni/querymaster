@@ -280,15 +280,14 @@ class QueryMaster:
         Args:
             df: DataFrame containing query results
             output_file: Path to save the output file
-            output_format: Format to save (csv/parquet/json)
+            output_format: Format to save (csv/parquet)
             chunksize: Number of rows per chunk for CSV output
         """
         try:
             # Define supported output formats and their save functions
             supported_formats = {
                 "csv": lambda: df.to_csv(output_file, index=False, header=True, chunksize=chunksize),
-                "parquet": lambda: df.to_parquet(output_file, index=False),
-                "json": lambda: df.to_json(output_file, orient="records", lines=True)
+                "parquet": lambda: df.to_parquet(output_file, index=False, engine='pyarrow')
             }
             
             if output_format not in supported_formats:
@@ -356,8 +355,15 @@ class QueryMaster:
         try:
             # Check if output file exists first
             if 'output_file' in config:
-                # Process output file path with parameters if needed
+                # Get output format from file extension
                 output_path = config['output_file']
+                output_format = Path(output_path).suffix[1:].lower()  # Remove the dot and convert to lowercase
+                
+                # Validate output format
+                if output_format not in {'csv', 'parquet'}:
+                    raise ValueError(f"Unsupported output format: {output_format}")
+
+                # Process output file path with parameters if needed
                 if parameters:
                     for key, value in parameters.items():
                         output_path = output_path.replace(f"{{{key}}}", str(value))
@@ -401,9 +407,9 @@ class QueryMaster:
 
             # Save output if output_file is specified in config
             if result_df is not None and 'output_file' in config:
-                output_format = config.get('output_format', 'csv')  # Default to CSV
                 output_path = Path(config['output_file'])
-                output_path.parent.mkdir(parents=True, exist_ok=True)  # Create output directory if not exists
+                output_format = output_path.suffix[1:].lower()  # Get format from file extension
+                output_path.parent.mkdir(parents=True, exist_ok=True)
                 await self.save_output_chunked(
                     result_df,
                     output_path,

@@ -1,4 +1,4 @@
 database,file_path,params,output_file
 cmrods_prd,queries/postgres/data1.sql,{"dt_t1":"2024-11-18","dt_t2":"2024-11-18"},output/postgres_data1.csv
-cmrods_prd,queries/postgres/data2.sql,{"dt_t1":"2024-11-18","dt_t2":"2024-11-18"},output/postgres_data2.csv
+cmrods_prd,queries/postgres/data2.sql,{"dt_t1":"2024-11-18","dt_t2":"2024-11-18"},output/postgres_data2.parquet
 ORACLE,queries/oracle/data1.sql,{"dt_t1":"2024-11-18","dt_t2":"2024-11-18"},output/oracle_data1.csv
