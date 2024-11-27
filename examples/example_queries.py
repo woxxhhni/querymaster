@@ -22,20 +22,18 @@ def main():
             connection_config=str(config_path),
             query_config=str(query_config_path),
             oracle_max_queries=3,
-            postgres_max_queries=5
+            postgres_max_queries=5,
+            query_parameters={
+                "dt_t1_yyyy-mm-dd": t1_date,    
+                "dt_t2_yyyy-mm-dd": t2_date,    
+                "dt_t1_yyyymmdd": t1_date_compact,  
+                "dt_t2_yyyymmdd": t2_date_compact   
+            }
         )
 
         # Execute queries with parameters
         print("\nExecuting all queries...")
-        executor.execute_queries(
-            return_results=False,
-            parameters={
-                "dt_t1_yyyy-mm-dd": t1_date,    # T-1 date (YYYY-MM-DD)
-                "dt_t2_yyyy-mm-dd": t2_date,    # T-2 date (YYYY-MM-DD)
-                "dt_t1_yyyymmdd": t1_date_compact,  # T-1 date (YYYYMMDD)
-                "dt_t2_yyyymmdd": t2_date_compact   # T-2 date (YYYYMMDD)
-            }
-        )
+        executor.execute_queries()
         print("\nAll queries completed successfully!")
 
     except Exception as e:

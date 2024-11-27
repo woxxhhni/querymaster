@@ -13,7 +13,8 @@ class QueryExecutor:
         connection_config: str,
         query_config: str,
         oracle_max_queries: int = 3,
-        postgres_max_queries: int = 5
+        postgres_max_queries: int = 5,
+        query_parameters: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize QueryExecutor
@@ -23,11 +24,13 @@ class QueryExecutor:
             query_config: Path to query configuration file
             oracle_max_queries: Maximum concurrent Oracle queries
             postgres_max_queries: Maximum concurrent Postgres queries
+            query_parameters: Optional dictionary of query parameters
         """
         self.config_path = Path(connection_config)
         self.query_config_path = Path(query_config)
         self.oracle_max_queries = oracle_max_queries
         self.postgres_max_queries = postgres_max_queries
+        self.query_parameters = query_parameters
         
         # Create necessary directories
         Path("output/oracle").mkdir(parents=True, exist_ok=True)
@@ -39,8 +42,7 @@ class QueryExecutor:
         self,
         oracle_configs: Optional[List[Dict[str, Any]]] = None,
         postgres_configs: Optional[List[Dict[str, Any]]] = None,
-        return_results: bool = True,
-        parameters: Optional[Dict[str, Any]] = None
+        return_results: bool = True
     ) -> Optional[Dict[str, List[Any]]]:
         """
         Execute queries for both Oracle and PostgreSQL databases
@@ -49,7 +51,6 @@ class QueryExecutor:
             oracle_configs: Optional list of Oracle query configurations
             postgres_configs: Optional list of PostgreSQL query configurations
             return_results: Whether to return query results (default: True)
-            parameters: Optional dictionary of query parameters
 
         Returns:
             Dictionary containing results for both databases if return_results is True,
@@ -60,7 +61,7 @@ class QueryExecutor:
                 oracle_configs, 
                 postgres_configs, 
                 return_results,
-                parameters
+                self.query_parameters
             )
         )
 

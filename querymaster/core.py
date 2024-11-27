@@ -354,7 +354,20 @@ class QueryMaster:
         parameters: Optional[Dict[str, Any]] = None
     ) -> pd.DataFrame:
         try:
-            # Read and parse query file
+            # Check if output file exists first
+            if 'output_file' in config:
+                # Process output file path with parameters if needed
+                output_path = config['output_file']
+                if parameters:
+                    for key, value in parameters.items():
+                        output_path = output_path.replace(f"{{{key}}}", str(value))
+                
+                # Skip if output file already exists
+                if Path(output_path).exists():
+                    self.logger.info(f"Output file {output_path} already exists, skipping execution")
+                    return pd.DataFrame()
+
+            # Continue with normal execution if output doesn't exist
             query_file = Path(config['query_file'])
             with open(query_file, 'r') as f:
                 query_content = f.read()
