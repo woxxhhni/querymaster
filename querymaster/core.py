@@ -405,22 +405,23 @@ class QueryMaster:
             with open(query_file, 'r') as f:
                 query_content = f.read()
 
-            # Replace parameters if provided
+            # Replace parameters if provided (runtime parameters take precedence)
             if parameters:
-                # 首先使用配置文件中的参数
-                config_params = config.get('params', {})
-                for key, value in config_params.items():
-                    query_content = query_content.replace(f"{{{key}}}", str(value))
-
-                # 然后使用传入的参数（可以覆盖配置文件中的参数）
                 for key, value in parameters.items():
                     query_content = query_content.replace(f"{{{key}}}", str(value))
-                    # 替换输出文件路径中的参数
+                    # Also replace parameters in output file path
                     if 'output_file' in config:
                         config['output_file'] = config['output_file'].replace(
                             f"{{{key}}}", 
                             str(value)
                         )
+
+            # Replace remaining parameters from config file
+            config_params = config.get('params', {})  # Get parameters from config file
+            for key, value in config_params.items():
+                # Only replace if not already replaced by runtime parameters
+                if parameters is None or key not in parameters:
+                    query_content = query_content.replace(f"{{{key}}}", str(value))
 
             # Split into individual statements
             statements = self._split_sql_statements(query_content)

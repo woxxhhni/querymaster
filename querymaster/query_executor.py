@@ -33,10 +33,10 @@ class QueryExecutor:
         self.query_parameters = query_parameters
         
         # Create necessary directories
-        Path("output/oracle").mkdir(parents=True, exist_ok=True)
-        Path("output/postgres").mkdir(parents=True, exist_ok=True)
-        Path("logs").mkdir(exist_ok=True)
-        Path("configs").mkdir(exist_ok=True)
+        #Path("output/oracle").mkdir(parents=True, exist_ok=True)
+        #Path("output/postgres").mkdir(parents=True, exist_ok=True)
+        #Path("logs").mkdir(exist_ok=True)
+        #Path("configs").mkdir(exist_ok=True)
 
     def execute_queries(
         self,

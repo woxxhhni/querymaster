@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 def main():
     try:
         # Get configuration file paths
-        config_path = Path(__file__).parent.parent / "connection.ini"
-        query_config_path = Path(__file__).parent.parent / "configs/query_configs.csv"
+        config_path = Path(__file__).parent.parent / "config/connection.ini"
+        query_config_path = Path(__file__).parent.parent / "config/query_configs.csv"
         
         # Prepare query parameters
         today = datetime.now()
